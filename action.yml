@@ -1,0 +1,230 @@
+name: 'Langton\'s Ant Profile Generator'
+description: 'Generate Langton\'s Ant animations from GitHub contribution graphs'
+branding:
+  icon: 'activity'
+  color: 'green'
+
+# ⚠️ IMPORTANT: This is NOT a published GitHub Action!
+# 
+# This action.yml file is designed for use within FORKED repositories only.
+# 
+# If you're getting "Unable to resolve action" errors, you need to:
+# 1. Fork this repository to your account
+# 2. Use the workflow that comes with your fork
+# 
+# DO NOT try to reference this repository directly as an action!
+
+inputs:
+  github-token:
+    description: 'GitHub token for API access'
+    required: false
+    default: ${{ github.token }}
+  
+  username:
+    description: 'GitHub username to generate animation for'
+    required: false
+    default: ${{ github.repository_owner }}
+  
+  asset-type:
+    description: 'Type of asset to generate'
+    required: false
+    default: 'contribution'
+    type: choice
+    options:
+      - contribution  # User's GitHub contribution pattern
+      - random       # Random grid demo (auto mode)
+      - ant          # Single ant on empty grid demo
+      - all          # Generate all asset types
+  
+  generations:
+    description: 'Number of generations'
+    required: false
+    default: '60'
+  
+  frame-duration:
+    description: 'Animation speed (milliseconds per frame)'
+    required: false
+    default: '800'
+  
+  initial-display-duration:
+    description: 'Time to show initial pattern (milliseconds)'
+    required: false
+    default: '3000'
+  
+  show-progress-bar:
+    description: 'Show progress bar below animation'
+    required: false
+    default: 'true'
+    type: boolean
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+      shell: bash
+    
+    - name: Build project
+      run: npm run build
+      shell: bash
+    
+    - name: Create assets directory
+      run: mkdir -p assets
+      shell: bash
+    
+    - name: Generate Langton's Ant animation
+      run: |
+        set -e  # Exit immediately if a command exits with a non-zero status
+        
+        ASSET_TYPE="${{ inputs.asset-type }}"
+        USERNAME="${{ inputs.username }}"
+        GITHUB_TOKEN="${{ inputs.github-token }}"
+        GENERATIONS="${{ inputs.generations }}"
+        FRAME_DURATION="${{ inputs.frame-duration }}"
+        INITIAL_DISPLAY_DURATION="${{ inputs.initial-display-duration }}"
+        SHOW_PROGRESS_BAR="${{ inputs.show-progress-bar }}"
+        
+        echo "🐜 Generating Langton's Ant animation..."
+        echo "👤 User: $USERNAME"
+        echo "🎯 Asset Type: $ASSET_TYPE"
+        echo "🔢 Generations: $GENERATIONS"
+        echo "⏱️ Frame Duration: ${FRAME_DURATION}ms"
+        echo "⏳ Initial Display: ${INITIAL_DISPLAY_DURATION}ms"
+        echo "📊 Progress Bar: $SHOW_PROGRESS_BAR"
+        
+        # Build base command arguments
+        PROGRESS_BAR_FLAG=""
+        if [ "$SHOW_PROGRESS_BAR" = "true" ]; then
+          PROGRESS_BAR_FLAG="--show-progress-bar"
+        fi
+        
+        # Function to run command with error handling
+        run_generation() {
+          local description="$1"
+          local output_file="$2"
+          shift 2
+          
+          echo "$description"
+          if node dist/cli/command-line.js "$@"; then
+            echo "✅ Successfully generated $output_file"
+            if [ -f "$output_file" ]; then
+              echo "📁 File size: $(ls -lh "$output_file" | awk '{print $5}')"
+            else
+              echo "⚠️ Warning: Expected file $output_file was not created"
+            fi
+          else
+            echo "❌ Failed to generate $output_file"
+            exit 1
+          fi
+        }
+        
+        case "$ASSET_TYPE" in
+          "contribution")
+            run_generation \
+              "📊 Generating contribution-based Langton's Ant..." \
+              "assets/langtons-ant-contribution.svg" \
+              --username "$USERNAME" \
+              --output "assets/langtons-ant-contribution.svg" \
+              --pattern "langtons-ant" \
+              --langtons-ant-mode "contribution" \
+              --ant-count "-1" \
+              --generations "$GENERATIONS" \
+              --frame-duration "$FRAME_DURATION" \
+              --initial-display-duration "$INITIAL_DISPLAY_DURATION" \
+              $PROGRESS_BAR_FLAG \
+              --github-token "$GITHUB_TOKEN"
+            ;;
+          "random")
+            run_generation \
+              "🎲 Generating random grid demo..." \
+              "assets/langtons-ant-random.svg" \
+              --username "$USERNAME" \
+              --output "assets/langtons-ant-random.svg" \
+              --pattern "langtons-ant" \
+              --langtons-ant-mode "random" \
+              --generations "$GENERATIONS" \
+              --frame-duration "$FRAME_DURATION" \
+              --initial-display-duration "$INITIAL_DISPLAY_DURATION" \
+              $PROGRESS_BAR_FLAG \
+              --github-token ""
+            ;;
+          "ant")
+            run_generation \
+              "🐜 Generating single ant demo..." \
+              "assets/langtons-ant.svg" \
+              --username "$USERNAME" \
+              --output "assets/langtons-ant.svg" \
+              --pattern "langtons-ant" \
+              --langtons-ant-mode "empty" \
+              --ant-count "1" \
+              --generations "$GENERATIONS" \
+              --frame-duration "$FRAME_DURATION" \
+              --initial-display-duration "$INITIAL_DISPLAY_DURATION" \
+              $PROGRESS_BAR_FLAG \
+              --github-token ""
+            ;;
+          "all")
+            echo "🌟 Generating all asset types..."
+            
+            # Generate contribution-based animation
+            run_generation \
+              "📊 [1/3] Generating contribution-based Langton's Ant..." \
+              "assets/langtons-ant-contribution.svg" \
+              --username "$USERNAME" \
+              --output "assets/langtons-ant-contribution.svg" \
+              --pattern "langtons-ant" \
+              --langtons-ant-mode "contribution" \
+              --ant-count "-1" \
+              --generations "$GENERATIONS" \
+              --frame-duration "$FRAME_DURATION" \
+              --initial-display-duration "$INITIAL_DISPLAY_DURATION" \
+              $PROGRESS_BAR_FLAG \
+              --github-token "$GITHUB_TOKEN"
+            
+            # Generate random grid demo
+            run_generation \
+              "🎲 [2/3] Generating random grid demo..." \
+              "assets/langtons-ant-random.svg" \
+              --username "$USERNAME" \
+              --output "assets/langtons-ant-random.svg" \
+              --pattern "langtons-ant" \
+              --langtons-ant-mode "random" \
+              --generations "$GENERATIONS" \
+              --frame-duration "$FRAME_DURATION" \
+              --initial-display-duration "$INITIAL_DISPLAY_DURATION" \
+              $PROGRESS_BAR_FLAG \
+              --github-token ""
+            
+            # Generate single ant demo
+            run_generation \
+              "🐜 [3/3] Generating single ant demo..." \
+              "assets/langtons-ant.svg" \
+              --username "$USERNAME" \
+              --output "assets/langtons-ant.svg" \
+              --pattern "langtons-ant" \
+              --langtons-ant-mode "empty" \
+              --ant-count "1" \
+              --generations "$GENERATIONS" \
+              --frame-duration "$FRAME_DURATION" \
+              --initial-display-duration "$INITIAL_DISPLAY_DURATION" \
+              $PROGRESS_BAR_FLAG \
+              --github-token ""
+            
+            echo "🎯 All three animations completed successfully!"
+            ;;
+          *)
+            echo "❌ Invalid asset type: $ASSET_TYPE"
+            exit 1
+            ;;
+        esac
+        
+        echo "✅ Animation generation complete"
+        echo "📁 Generated files in assets/:"
+        ls -la assets/langtons-ant-*.svg || echo "No files found"
+      shell: bash
