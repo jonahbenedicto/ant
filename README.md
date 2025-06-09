@@ -1,5 +1,5 @@
-# Langton's Ant
-Generates beautiful Langton's Ant simulations with multiple ants and outputs them as animated SVGs or GIFs.
+# ant
+Generates Langton's Ant simulations from a GitHub user's contributions and outputs a screen capture as an animated SVG.
 
 ![Langton's Ant Animation](./demos/demo-random.svg)
 
